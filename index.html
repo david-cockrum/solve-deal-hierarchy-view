@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deal Hierarchy</title>
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --navy:#011127;--orange:#FC8F20;--teal:#84DEE6;--ink:#1E1C29;
+  --bg:#f5f7fa;--card:#fff;--line:#d9dee7;--muted:#6b7280;
+  --l1:#2563eb;--l2:#059669;--l3:#d97706;--l4:#6b7280;
+  --up:#047857;--upbg:#e7f6ef;--down:#b91c1c;--downbg:#fdecec;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Lato,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:700;flex:1 1 420px}
+header h1 small{display:block;font-weight:400;color:var(--teal);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+.stats{display:flex;gap:28px;flex-wrap:wrap}
+.stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#aab4c3}
+.stat .v{font-size:22px;font-weight:700}
+.stat .v.up{color:#6ee7b7}.stat .v.down{color:#fca5a5}
+.bar{display:flex;gap:10px;align-items:center;padding:12px 24px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.crumb{flex:1 1 auto;color:var(--muted);font-size:13px}
+.crumb a{color:var(--l1);text-decoration:none}.crumb b{color:var(--ink)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+main{padding:20px 24px 40px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:14px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+ul.tree,ul.tree ul{list-style:none;margin:0;padding:0}
+ul.tree ul{margin-left:34px;padding-left:18px;border-left:2px solid var(--line)}
+ul.tree li{position:relative;margin:10px 0}
+ul.tree ul>li::before{content:"";position:absolute;left:-18px;top:28px;width:18px;border-top:2px solid var(--line)}
+.node{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--lc);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:6px 16px;align-items:center;box-shadow:0 1px 2px rgba(1,17,39,.04)}
+.node.here{box-shadow:0 0 0 3px var(--orange);border-color:var(--orange)}
+.lv{font-weight:700;font-size:12px;color:#fff;background:var(--lc);border-radius:5px;padding:3px 7px;align-self:start}
+.name a{color:var(--ink);font-weight:600;text-decoration:none;font-size:15px}
+.name a:hover{text-decoration:underline}
+.meta{color:var(--muted);font-size:12px;margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;background:#eef1f5;color:#374151}
+.chip.up{background:var(--upbg);color:var(--up)}.chip.down{background:var(--downbg);color:var(--down)}.chip.new{background:#e8f0fe;color:var(--l1)}
+.chip.here{background:var(--orange);color:#fff}
+.num{text-align:right}
+.num .arr{font-size:18px;font-weight:700}
+.num .chg{font-size:12px;font-weight:600}
+.chg.up{color:var(--up)}.chg.down{color:var(--down)}
+.terms{grid-column:2/4;margin-top:6px;display:none}
+body.showterms .terms{display:block}
+.terms table{width:100%;border-collapse:collapse;font-size:12.5px}
+.terms th{text-align:left;color:var(--muted);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line)}
+.terms td{padding:5px 8px;border-bottom:1px solid #eef1f5}
+.terms td.r,.terms th.r{text-align:right}
+.toggle{cursor:pointer;color:var(--muted);font-size:12px;user-select:none;grid-column:1}
+li.closed>ul{display:none}
+.tl{position:relative;height:8px;background:#eef1f5;border-radius:4px;margin-top:8px;max-width:640px}
+.tl .seg{position:absolute;top:0;height:8px;border-radius:4px;background:#9ca3af;opacity:.55;border-right:2px solid #fff}
+.tl .seg.up{background:var(--up)}.tl .seg.down{background:var(--down)}.tl .seg.new{background:var(--l1)}
+.tl .seg.act{opacity:1}
+.tl .now{position:absolute;top:-3px;width:2px;height:14px;background:var(--orange)}
+.empty{padding:60px;text-align:center;color:var(--muted)}
+.foot{margin-top:24px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app"><div class="empty">Open this view from the Hierarchy tab on a deal.</div></div>
+<script>
+(function(){
+  var PORTAL=52272109;
+  var raw=(location.hash.match(/[#&]d=([^&]*)/)||[])[1];
+  if(!raw)return;
+  var data;try{data=JSON.parse(decodeURIComponent(raw));}catch(e){return;}
+  var tree=data.tree,s=data.summary||{},cur=String(data.currentId);
+  var LV=[{c:'var(--l1)',n:'Current renewal'},{c:'var(--l2)',n:'Rolled in'},{c:'var(--l3)',n:'Prior term'},{c:'var(--l4)',n:'Original'}];
+  var L=function(d){return LV[Math.min(d,LV.length-1)];};
+  var LAB={new:'New',cross_sell_new:'Cross-sell - New',upsell:'Upsell',downsell:'Downsell',renewal:'Renewal',increase:'Increase',flat:'Flat',step_up:'Step-Up'};
+  var lab=function(v){return v?(LAB[v]||v):'--';};
+  var cls=function(t){return t==='downsell'?'down':(t==='step_up'||t==='increase'||t==='upsell')?'up':(t==='new'||t==='cross_sell_new')?'new':'';};
+  var esc=function(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var money=function(n){if(n==null||isNaN(+n))return'--';n=+n;return(n<0?'-':'')+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0});};
+  var signed=function(n){return n==null?'--':(n>0?'+':'')+money(n);};
+  var dt=function(d){if(!d)return'--';var p=String(d).slice(0,10).split('-');return(+p[1])+'/'+(+p[2])+'/'+p[0];};
+  var RR={budget:'Budget',competitor:'Competitor',product_gap:'Product gap',champion_left:'Champion left',manda:'M&A',usage_decline:'Usage decline',other:'Other'};
+  var url=function(id){return'https://app.hubspot.com/contacts/'+PORTAL+'/record/0-3/'+id;};
+  var lastArr=function(n){var t=(n.terms||[]).slice().sort(function(a,b){return String(a.start).localeCompare(String(b.start));});return t.length?+t[t.length-1].arr:+(n.forecastArr||0);};
+  var change=function(n){return n.children&&n.children.length?(+(n.forecastArr||0))-n.children.reduce(function(a,c){return a+lastArr(c);},0):null;};
+  function path(n,id,tr){tr=(tr||[]).concat([n]);if(String(n.id)===id)return tr;for(var i=0;i<(n.children||[]).length;i++){var h=path(n.children[i],id,tr);if(h)return h;}return null;}
+  var p=path(tree,cur)||[tree];var here=p[p.length-1];
+  var maxD=0;(function w(n){maxD=Math.max(maxD,n.depth);(n.children||[]).forEach(w);})(tree);
+  var cut=String(tree.name).split(' - ')[0];
+  var short=function(nm){return nm.indexOf(cut+' - ')===0?nm.slice(cut.length+3):nm;};
+
+  var allT=[];(function w(n){(n.terms||[]).forEach(function(t){if(t.start)allT.push(+new Date(t.start));if(t.end)allT.push(+new Date(t.end));});(n.children||[]).forEach(w);})(tree);
+  var t0=Math.min.apply(null,allT),t1=Math.max.apply(null,allT),now=Date.now();
+  function timeline(n){
+    var ts=(n.terms||[]).filter(function(t){return t.start&&t.end;});
+    if(!ts.length||!(t1>t0))return'';
+    var pos=function(d){return Math.max(0,Math.min(100,(+new Date(d)-t0)/(t1-t0)*100));};
+    var h='<div class="tl" title="Terms on a shared timeline">';
+    ts.forEach(function(t){var a=pos(t.start),b=pos(t.end);h+='<span class="seg '+cls(t.type)+(t.active?' act':'')+'" style="left:'+a+'%;width:'+Math.max(b-a,1)+'%" title="Term '+(t.number||'')+': '+dt(t.start)+' to '+dt(t.end)+' · '+money(t.arr)+'"></span>';});
+    if(now>t0&&now<t1)h+='<span class="now" style="left:'+pos(new Date(now).toISOString())+'%"></span>';
+    return h+'</div>';
+  }
+  function node(n){
+    var ch=change(n),isHere=String(n.id)===cur,lv=L(n.depth);
+    var terms=(n.terms||[]);
+    var h='<li'+(n.depth>=3?' class="closed"':'')+'><div class="node'+(isHere?' here':'')+'" style="--lc:'+lv.c+'">';
+    h+='<span class="lv">L'+(n.depth+1)+'</span>';
+    h+='<div><div class="name"><a href="'+url(n.id)+'" target="_blank" rel="noopener">'+esc(short(n.name))+'</a> '+(isHere?'<span class="chip here">You are here</span>':'')+'</div>';
+    h+='<div class="meta"><span class="chip '+cls(n.dealType)+'">'+esc(lab(n.dealType))+'</span><span>'+esc(n.stage)+'</span><span>Effective '+dt(n.effective)+'</span><span>Ends '+dt(n.end)+'</span>'+(terms.length?'<span>'+terms.length+' term'+(terms.length>1?'s':'')+'</span>':'')+(n.children&&n.children.length?'<span>'+n.children.length+' rolled in</span>':'')+(n.atRisk>0?'<span class="chip down">At risk '+money(n.atRisk)+(n.atRiskReason?' · '+esc(RR[n.atRiskReason]||n.atRiskReason):'')+'</span>':'')+'</div>'+timeline(n)+'</div>';
+    h+='<div class="num"><div class="arr">'+money(n.forecastArr)+'</div>'+(ch==null?'':'<div class="chg '+(ch>0?'up':ch<0?'down':'')+'">'+signed(ch)+' vs rolled-in</div>')+'</div>';
+    if(n.children&&n.children.length)h+='<span class="toggle" data-t>'+(n.depth>=3?'Show':'Hide')+' '+n.children.length+'</span>';
+    if(terms.length){
+      h+='<div class="terms"><table><thead><tr><th>Term</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th class="r">ARR</th><th class="r">Delta</th></tr></thead><tbody>';
+      terms.forEach(function(t,i){h+='<tr><td>'+(t.number||i+1)+'</td><td>'+dt(t.start)+'</td><td>'+dt(t.end)+'</td><td><span class="chip '+cls(t.type)+'">'+esc(lab(t.type))+'</span></td><td>'+(t.active?'<span class="chip up">Active</span>':'Inactive')+'</td><td class="r">'+money(t.arr)+'</td><td class="r">'+(t.delta?signed(+t.delta):'--')+'</td></tr>';});
+      h+='</tbody></table></div>';
+    }
+    h+='</div>';
+    if(n.children&&n.children.length)h+='<ul>'+n.children.map(node).join('')+'</ul>';
+    return h+'</li>';
+  }
+
+  var risk=0;(function w(n){risk+=(+n.atRisk||0);(n.children||[]).forEach(w);})(tree);
+  var c=s.upForRenewalCalculated==null?null:(+s.forecastArr)-(+s.upForRenewalCalculated);
+  var pct=c!=null&&s.upForRenewalCalculated?(c/s.upForRenewalCalculated*100).toFixed(1)+'%':'';
+  var html='<header><h1><small>Deal hierarchy · Level '+(here.depth+1)+' of '+(maxD+1)+' · '+L(here.depth).n+'</small>'+esc(tree.name)+'</h1><div class="stats">'
+    +'<div class="stat"><div class="k">This deal ARR</div><div class="v">'+money(s.forecastArr)+'</div></div>'
+    +'<div class="stat"><div class="k">Up For Renewal</div><div class="v">'+money(s.upForRenewalCalculated)+'</div></div>'
+    +'<div class="stat"><div class="k">Change</div><div class="v '+(c>0?'up':c<0?'down':'')+'">'+signed(c)+(pct?' <span style="font-size:13px">('+pct+')</span>':'')+'</div></div>'
+    +(risk>0?'<div class="stat"><div class="k">At risk in chain</div><div class="v down">'+money(risk)+'</div></div>':'')
+    +'<div class="stat"><div class="k">Deals</div><div class="v">'+(s.dealCount||'--')+'</div></div></div></header>';
+  html+='<div class="bar"><div class="crumb">'+p.map(function(n,i){return i===p.length-1?'<b>'+esc(short(n.name))+'</b>':'<a href="'+url(n.id)+'" target="_blank" rel="noopener">'+esc(short(n.name))+'</a>';}).join(' &rsaquo; ')+'</div>'
+    +'<button class="btn" id="bt">Term breakdowns</button><button class="btn" id="be">Expand all</button><button class="btn" id="bc">Collapse</button><button class="btn" id="bp">Print</button></div>';
+  html+='<main><div class="legend">'+LV.map(function(l,i){return'<span><i style="background:'+l.c+'"></i>L'+(i+1)+' '+l.n+'</span>';}).join('')+'<span><i style="background:var(--orange)"></i>Deal you opened</span><span>Bars: each term on a shared timeline, orange tick = today</span></div>';
+  html+='<ul class="tree">'+node(tree)+'</ul>';
+  html+='<div class="foot">Change = deal ARR minus the last term of every deal rolling into it. Up For Renewal includes mid-term upsells and downsells. Deal links open in a new tab.</div></main>';
+  document.getElementById('app').innerHTML=html;
+  var body=document.body;
+  document.getElementById('bt').onclick=function(){body.classList.toggle('showterms');this.classList.toggle('on');};
+  document.getElementById('be').onclick=function(){document.querySelectorAll('li.closed').forEach(function(l){l.classList.remove('closed');});sync();};
+  document.getElementById('bc').onclick=function(){document.querySelectorAll('ul.tree ul').forEach(function(u){u.parentNode.classList.add('closed');});sync();};
+  document.getElementById('bp').onclick=function(){body.classList.add('showterms');window.print();};
+  function sync(){document.querySelectorAll('[data-t]').forEach(function(t){var li=t.closest('li');var n=li.querySelector(':scope>ul').children.length;t.textContent=(li.classList.contains('closed')?'Show ':'Hide ')+n;});}
+  document.addEventListener('click',function(e){var t=e.target.closest('[data-t]');if(!t)return;t.closest('li').classList.toggle('closed');sync();});
+  if(data.showTerms){body.classList.add('showterms');document.getElementById('bt').classList.add('on');}
+})();
+</script>
+</body>
+</html>
