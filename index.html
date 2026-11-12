@@ -59,6 +59,8 @@ li.closed>ul{display:none}
 .tl .seg.up{background:var(--up)}.tl .seg.down{background:var(--down)}.tl .seg.new{background:var(--l1)}
 .tl .seg.act{opacity:1}
 .tl .now{position:absolute;top:-3px;width:2px;height:14px;background:var(--orange)}
+.math{background:#fff8ef;border-bottom:1px solid #f5d9b5;padding:10px 24px;font-size:13px}
+.math .mnote{color:var(--muted);font-size:12px;margin-top:2px}
 .empty{padding:60px;text-align:center;color:var(--muted)}
 .foot{margin-top:24px;font-size:12px;color:var(--muted)}
 </style>
@@ -125,13 +127,14 @@ li.closed>ul{display:none}
   var c=s.upForRenewalCalculated==null?null:(+s.forecastArr)-(+s.upForRenewalCalculated);
   var pct=c!=null&&s.upForRenewalCalculated?(c/s.upForRenewalCalculated*100).toFixed(1)+'%':'';
   var html='<header><h1><small>Deal hierarchy · Level '+(here.depth+1)+' of '+(maxD+1)+' · '+L(here.depth).n+'</small>'+esc(tree.name)+'</h1><div class="stats">'
-    +'<div class="stat"><div class="k">This deal ARR</div><div class="v">'+money(s.forecastArr)+'</div></div>'
-    +'<div class="stat"><div class="k">Up For Renewal</div><div class="v">'+money(s.upForRenewalCalculated)+'</div></div>'
+    +'<div class="stat"><div class="k">Forecasted ARR</div><div class="v">'+money(s.forecastArr)+'</div></div>'
+    +'<div class="stat"><div class="k">Up For Renewal (calc)</div><div class="v">'+money(s.upForRenewalCalculated)+'</div></div>'
     +'<div class="stat"><div class="k">Change</div><div class="v '+(c>0?'up':c<0?'down':'')+'">'+signed(c)+(pct?' <span style="font-size:13px">('+pct+')</span>':'')+'</div></div>'
     +(risk>0?'<div class="stat"><div class="k">At risk in chain</div><div class="v down">'+money(risk)+'</div></div>':'')
     +'<div class="stat"><div class="k">Deals</div><div class="v">'+(s.dealCount||'--')+'</div></div></div></header>';
   html+='<div class="bar"><div class="crumb">'+p.map(function(n,i){return i===p.length-1?'<b>'+esc(short(n.name))+'</b>':'<a href="'+url(n.id)+'" target="_blank" rel="noopener">'+esc(short(n.name))+'</a>';}).join(' &rsaquo; ')+'</div>'
     +'<button class="btn" id="bt">Term breakdowns</button><button class="btn" id="be">Expand all</button><button class="btn" id="bc">Collapse</button><button class="btn" id="bp">Print</button></div>';
+  if(s.parts&&s.parts.length)html+='<div class="math"><b>Up For Renewal</b> = '+s.parts.map(function(x){return esc(short(x.name))+' <b>'+money(x.exitArr)+'</b>';}).join(' + ')+' = <b>'+money(s.upForRenewalCalculated)+'</b>'+(s.upForRenewalStored!=null&&Math.abs(s.upForRenewalStored-s.upForRenewalCalculated)>0.5?' <span class="chip down">Stamped value '+money(s.upForRenewalStored)+' differs</span>':(s.upForRenewalStored!=null?' <span class="chip up">Matches stamped value</span>':''))+'<div class="mnote">Last chronological term of every deal rolling into the open renewal, step-ups included. Forecasted ARR is what the renewal manager projects.</div></div>';
   html+='<main><div class="legend">'+LV.map(function(l,i){return'<span><i style="background:'+l.c+'"></i>L'+(i+1)+' '+l.n+'</span>';}).join('')+'<span><i style="background:var(--orange)"></i>Deal you opened</span><span>Bars: each term on a shared timeline, orange tick = today</span></div>';
   html+='<ul class="tree">'+node(tree)+'</ul>';
   html+='<div class="foot">Change = deal ARR minus the last term of every deal rolling into it. Up For Renewal includes mid-term upsells and downsells. Deal links open in a new tab.</div></main>';
