@@ -68,7 +68,7 @@ li.closed>ul{display:none}
 <script>
 (function(){
   var PORTAL=52272109;
-  var raw=(location.hash.match(/[#&]d=([^&]*)/)||[])[1];
+  var raw=(location.hash.match(/[#&]d=([^&#]*)/)||[])[1];
   if(!raw)return;
   var data;try{data=JSON.parse(decodeURIComponent(raw));}catch(e){return;}
   var tree=data.tree,s=data.summary||{},cur=String(data.currentId);
